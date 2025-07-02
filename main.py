@@ -4,7 +4,6 @@ Simple PostgreSQL SQL Agent
 고정 테이블에서 한 컬럼만 SELECT하고 WHERE절만 자연어로 생성하는 간소화된 시스템
 """
 
-import argparse
 import logging
 import sys
 
@@ -20,30 +19,6 @@ def setup_logging(verbose: bool = False):
         level=level,
         format='%(asctime)s - %(levelname)s - %(message)s'
     )
-
-
-def run_query(natural_query: str):
-    """단일 쿼리 실행"""
-    try:
-        agent = create_simple_agent()
-        
-        logger.info(f"🔍 질문 분석 중: {natural_query}")
-        
-        result = agent.ask(natural_query)
-        
-        if result['success']:
-            logger.info(f"📝 생성된 SQL: {result['sql']}")
-            vals = result.get('result', [])
-            col = result.get('target_column', 'value')
-            if vals:
-                logger.info(f"✅ 발견된 {col.upper()} 값: {', '.join(map(str, vals))}")
-            else:
-                logger.info("✅ 조건에 맞는 데이터를 찾지 못했습니다.")
-        else:
-            logger.error(f"❌ 오류: {result.get('error', '알 수 없는 오류')}")
-            
-    except Exception as e:
-        logger.error(f"❌ 오류: {e}")
 
 
 def run_interactive():
@@ -96,18 +71,9 @@ def run_interactive():
 
 def main():
     """메인 함수"""
-    parser = argparse.ArgumentParser(description="Simple PostgreSQL SQL Agent")
-    parser.add_argument("--query", "-q", help="자연어 질문 (예: '가장 외곽에 있는 조직이 어디야?')")
-    parser.add_argument("--verbose", "-v", action="store_true", help="상세 로그")
-    
-    args = parser.parse_args()
-    setup_logging(args.verbose)
-    
+    setup_logging()
     try:
-        if args.query:
-            run_query(args.query)
-        else:
-            run_interactive()
+        run_interactive()
             
     except Exception as e:
         logger.error(f"❌ 오류: {e}")
