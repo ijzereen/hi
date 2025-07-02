@@ -1,5 +1,5 @@
 """
-KCMS Database Schema Definitions
+Database Schema Definitions
 PostgreSQL Docker 컨테이너 동적 스키마 정의
 """
 

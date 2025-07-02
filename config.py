@@ -1,5 +1,5 @@
 """
-KCMS Configuration - PostgreSQL Docker Container
+Configuration - PostgreSQL Docker Container
 PostgreSQL Docker 컨테이너 전용 동적 스키마 검색 SQL Agent
 """
 

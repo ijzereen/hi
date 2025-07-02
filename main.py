@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-KCMS - Korean Crime Management System SQL Agent
+PostgreSQL SQL Agent
 PostgreSQL Docker 컨테이너의 스키마를 동적으로 검색하여 자연어 쿼리를 SQL로 변환하는 시스템
 """
 
@@ -55,7 +55,7 @@ def scan_schema():
 
 def run_interactive():
     """대화형 모드"""
-    print("🔍 KCMS SQL Agent - 대화형 모드")
+    print("🔍 PostgreSQL SQL Agent - 대화형 모드")
     print("명령어: 'quit' (종료), 'schema' (스키마), 'tables' (테이블 목록)")
     print("-" * 50)
     
@@ -103,7 +103,7 @@ def run_interactive():
 
 def main():
     """메인 함수"""
-    parser = argparse.ArgumentParser(description="KCMS PostgreSQL SQL Agent")
+    parser = argparse.ArgumentParser(description="PostgreSQL SQL Agent")
     parser.add_argument("--query", "-q", help="자연어 질문")
     parser.add_argument("--info", action="store_true", help="DB 정보 확인")
     parser.add_argument("--scan", action="store_true", help="스키마 검색")

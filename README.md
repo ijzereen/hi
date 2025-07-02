@@ -1,4 +1,4 @@
-# KCMS - Korean Crime Management System SQL Agent
+# PostgreSQL SQL Agent
 
 PostgreSQL Docker 컨테이너의 스키마를 **동적으로 검색**하여 자연어 쿼리를 SQL로 변환하는 시스템입니다.
 
@@ -141,7 +141,7 @@ docker-compose restart
 ## 📁 파일 구조
 
 ```
-kcms/
+project/
 ├── main.py              # 메인 실행 파일 및 CLI
 ├── config.py            # 설정 관리
 ├── schema.py            # 스키마 정의 (자연어 설명 지원)
