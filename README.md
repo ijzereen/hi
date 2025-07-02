@@ -51,7 +51,7 @@ python main.py --scan
 python main.py --export backup_schema.py
 
 # 일회성 자연어 쿼리
-python main.py --query "gangs 테이블의 모든 데이터를 보여주세요"
+python main.py --query "organizations 테이블의 모든 데이터를 보여주세요"
 
 # 대화형 모드 (기본값)
 python main.py
@@ -66,9 +66,9 @@ python main.py
 ### 예시 자연어 쿼리
 
 ```
-🤔 질문: gangs 테이블에 몇 개의 레코드가 있나요?
-🤔 질문: Downtown 지역의 갱단을 모두 보여주세요
-🤔 질문: Dragons라는 이름을 가진 갱단의 위치를 알려주세요
+🤔 질문: organizations 테이블에 몇 개의 레코드가 있나요?
+🤔 질문: Downtown 지역의 조직을 모두 보여주세요
+🤔 질문: Tech Innovators라는 이름을 가진 조직의 위치를 알려주세요
 ```
 
 ## 🔧 시스템 구조
@@ -86,9 +86,9 @@ python main.py
 ### 테이블 레벨 가이드 (`column_guide`)
 ```python
 TableSchema(
-    name="gangs",
-    column_guide="이 테이블은 갱단 조직의 기본 정보와 지리적 위치를 추적합니다. 
-                 x_coord와 y_coord는 서울 지역 기준의 GPS 좌표를 나타냅니다..."
+    name="organizations",
+    column_guide="이 테이블은 조직의 기본 정보와 지리적 위치를 추적합니다. 
+                 x_coord와 y_coord는 GPS 좌표를 나타냅니다..."
 )
 ```
 
@@ -96,7 +96,7 @@ TableSchema(
 ```python
 ColumnSchema(
     name="members_count",
-    characteristics="갱단의 규모를 나타내는 수치형 데이터로, 위험도 평가와 수사 자원 배분의 기준이 됩니다."
+    characteristics="조직의 규모를 나타내는 수치형 데이터로, 조직 평가와 자원 배분의 기준이 됩니다."
 )
 ```
 
@@ -104,17 +104,17 @@ ColumnSchema(
 
 ## 📊 현재 데이터베이스 구조
 
-자동 검색된 `gangs` 테이블:
+자동 검색된 `organizations` 테이블:
 
 | 컬럼명 | 타입 | 설명 | 특성 |
 |--------|------|------|------|
-| id | INTEGER (PK) | 갱단 고유 식별자 | 시스템 자동 생성 |
-| name | VARCHAR(100) | 갱단 이름 | - |
-| region | VARCHAR(50) | 갱단 활동 지역 | - |
-| members_count | INTEGER | 갱단 구성원 수 | 위험도 평가 기준 |
-| status | VARCHAR(20) | 갱단 상태 | active/inactive/disbanded |
-| x_coord | DOUBLE | X 좌표 (경도) | 서울 기준 GPS |
-| y_coord | DOUBLE | Y 좌표 (위도) | 서울 기준 GPS |
+| id | INTEGER (PK) | 조직 고유 식별자 | 시스템 자동 생성 |
+| name | VARCHAR(100) | 조직 이름 | - |
+| region | VARCHAR(50) | 조직 활동 지역 | - |
+| members_count | INTEGER | 조직 구성원 수 | 조직 평가 기준 |
+| status | VARCHAR(20) | 조직 상태 | active/inactive/disbanded |
+| x_coord | DOUBLE | X 좌표 (경도) | GPS 좌표 |
+| y_coord | DOUBLE | Y 좌표 (위도) | GPS 좌표 |
 
 ## 🚨 트러블슈팅
 

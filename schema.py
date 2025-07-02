@@ -164,72 +164,72 @@ class DatabaseSchema:
         return "\n".join(parts)
 
 
-# 기존 gangs 테이블 스키마 (실제 PostgreSQL 구조에 맞게 수정)
-def get_gangs_schema() -> TableSchema:
-    """Gangs 테이블 스키마 정의"""
+# 기본 organizations 테이블 스키마 (실제 PostgreSQL 구조에 맞게 수정)
+def get_organizations_schema() -> TableSchema:
+    """Organizations 테이블 스키마 정의"""
     return TableSchema(
-        name="gangs",
-        description="갱단 정보 및 위치 데이터 테이블",
-        column_guide="이 테이블은 갱단 조직의 기본 정보와 지리적 위치를 추적합니다. id는 각 갱단의 고유 식별자이며, x_coord와 y_coord는 서울 지역 기준의 GPS 좌표를 나타냅니다. members_count와 established_year는 갱단의 규모와 역사를 파악하는 핵심 지표이며, status 필드는 현재 활동 상태를 추적하여 수사 우선순위 결정에 활용됩니다.",
+        name="organizations",
+        description="조직 정보 및 위치 데이터 테이블",
+        column_guide="이 테이블은 조직의 기본 정보와 지리적 위치를 추적합니다. id는 각 조직의 고유 식별자이며, x_coord와 y_coord는 GPS 좌표를 나타냅니다. members_count와 established_year는 조직의 규모와 역사를 파악하는 핵심 지표이며, status 필드는 현재 활동 상태를 추적합니다.",
         columns={
             "id": ColumnSchema(
                 name="id",
                 type="integer",
                 nullable=False,
-                description="갱단 고유 식별자 (기본키)",
-                characteristics="시스템에서 자동 생성되는 순차적 번호로, 다른 테이블에서 이 갱단을 참조할 때 사용하는 핵심 키입니다."
+                description="조직 고유 식별자 (기본키)",
+                characteristics="시스템에서 자동 생성되는 순차적 번호로, 다른 테이블에서 이 조직을 참조할 때 사용하는 핵심 키입니다."
             ),
             "name": ColumnSchema(
                 name="name",
                 type="character varying(100)",
                 nullable=False,
-                description="갱단 이름"
+                description="조직 이름"
             ),
             "region": ColumnSchema(
                 name="region",
                 type="character varying(50)",
                 nullable=True,
-                description="갱단 활동 지역"
+                description="조직 활동 지역"
             ),
             "members_count": ColumnSchema(
                 name="members_count",
                 type="integer",
                 nullable=True,
-                description="갱단 구성원 수",
-                characteristics="갱단의 규모를 나타내는 수치형 데이터로, 위험도 평가와 수사 자원 배분의 기준이 됩니다. 0~100 범위의 값을 가집니다."
+                description="조직 구성원 수",
+                characteristics="조직의 규모를 나타내는 수치형 데이터로, 조직 평가와 자원 배분의 기준이 됩니다. 0~100 범위의 값을 가집니다."
             ),
             "established_year": ColumnSchema(
                 name="established_year",
                 type="integer",
                 nullable=True,
-                description="갱단 설립 연도"
+                description="조직 설립 연도"
             ),
             "leader": ColumnSchema(
                 name="leader",
                 type="character varying(100)",
                 nullable=True,
-                description="갱단 리더 이름"
+                description="조직 리더 이름"
             ),
             "status": ColumnSchema(
                 name="status",
                 type="character varying(20)",
                 nullable=True,
-                description="갱단 상태 (active, inactive, disbanded 등)",
-                characteristics="갱단의 현재 활동 상태를 나타내는 카테고리형 데이터입니다. 'active'는 현재 활발히 활동 중, 'inactive'는 일시적 휴면 상태, 'disbanded'는 해체된 상태를 의미합니다."
+                description="조직 상태 (active, inactive, disbanded 등)",
+                characteristics="조직의 현재 활동 상태를 나타내는 카테고리형 데이터입니다. 'active'는 현재 활발히 활동 중, 'inactive'는 일시적 휴면 상태, 'disbanded'는 해체된 상태를 의미합니다."
             ),
             "x_coord": ColumnSchema(
                 name="x_coord",
                 type="double precision",
                 nullable=True,
-                description="갱단 위치 X 좌표",
-                characteristics="경도(longitude)를 나타내는 GPS 좌표로, y_coord와 함께 갱단의 지리적 위치를 정확히 표현합니다. 서울 지역 기준으로 126~128 범위의 값을 가집니다."
+                description="조직 위치 X 좌표",
+                characteristics="경도(longitude)를 나타내는 GPS 좌표로, y_coord와 함께 조직의 지리적 위치를 정확히 표현합니다."
             ),
             "y_coord": ColumnSchema(
                 name="y_coord",
                 type="double precision",
                 nullable=True,
-                description="갱단 위치 Y 좌표",
-                characteristics="위도(latitude)를 나타내는 GPS 좌표로, x_coord와 함께 사용되어 지도상의 정확한 위치를 표시할 수 있습니다. 서울 지역 기준으로 37~38 범위의 값을 가집니다."
+                description="조직 위치 Y 좌표",
+                characteristics="위도(latitude)를 나타내는 GPS 좌표로, x_coord와 함께 사용되어 지도상의 정확한 위치를 표시할 수 있습니다."
             ),
             "created_at": ColumnSchema(
                 name="created_at",
@@ -248,22 +248,22 @@ def get_gangs_schema() -> TableSchema:
         sample_data=[
             {
                 "id": 1,
-                "name": "Dragons",
+                "name": "Tech Innovators",
                 "region": "Downtown",
                 "members_count": 25,
                 "established_year": 1998,
-                "leader": "김용태",
+                "leader": "김철수",
                 "status": "active",
                 "x_coord": 126.9780,
                 "y_coord": 37.5665
             },
             {
                 "id": 2,
-                "name": "Phoenix Gang",
+                "name": "Creative Group",
                 "region": "Eastside",
                 "members_count": 18,
                 "established_year": 2001,
-                "leader": "박철수",
+                "leader": "박영희",
                 "status": "active",
                 "x_coord": 127.0276,
                 "y_coord": 37.4979
@@ -273,9 +273,9 @@ def get_gangs_schema() -> TableSchema:
 
 
 def get_default_schema() -> DatabaseSchema:
-    """기본 PostgreSQL 스키마 (gangs 테이블 포함)"""
+    """기본 PostgreSQL 스키마 (organizations 테이블 포함)"""
     schema = DatabaseSchema()
-    schema.add_table(get_gangs_schema())
+    schema.add_table(get_organizations_schema())
     return schema
 
 
