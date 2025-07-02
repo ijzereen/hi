@@ -32,8 +32,12 @@ POSTGRES_USER=your_username
 POSTGRES_PASSWORD=your_password
 POSTGRES_DB=your_database
 
-# 고정 테이블 설정 (기본값: organizations)
-TARGET_TABLE=organizations
+# 고정 테이블·컬럼 설정
+TARGET_TABLE=gangs
+TARGET_COLUMN=id
+
+# (선택) 도메인 특화 컨텍스트 – 공백이 포함되면 꼭 따옴표 사용!
+DOMAIN_CONTEXT="Night City 갱단 DB"
 
 # AI 모델 설정 - Ollama (자연어 쿼리용)
 OLLAMA_BASE_URL=http://localhost:11434/v1

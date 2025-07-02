@@ -28,6 +28,9 @@ class SimplePostgreSQLAgent:
         self.target_table = Config.TARGET_TABLE
         self.target_column = Config.TARGET_COLUMN
         
+        # 도메인 특화 프롬프트 컨텍스트 (선택)
+        self.domain_context = Config.DOMAIN_CONTEXT
+        
         self.llm = None
         try:
             self.llm = ChatOpenAI(
@@ -106,6 +109,10 @@ class SimplePostgreSQLAgent:
                 "error": str(e)
             }
 
+    def set_domain_context(self, context: str):
+        """도메인 특화 프롬프트 컨텍스트를 런타임에 설정"""
+        self.domain_context = context.strip()
+
     def analyze_query(self, natural_query: str) -> str:
         """자연어 질문을 분석해서 WHERE 조건을 추출"""
         if not self.llm:
@@ -117,7 +124,7 @@ class SimplePostgreSQLAgent:
             sample_str = ", ".join([f"'{s}'" if isinstance(s, str) else str(s) for s in samples[:3]])
             column_info.append(f"- {col}: 예시값 [{sample_str}]")
         
-        system_prompt = f"""당신은 자연어 질문을 PostgreSQL WHERE 절로 변환하는 전문가입니다.
+        base_prompt = f"""당신은 자연어 질문을 PostgreSQL WHERE 절로 변환하는 전문가입니다.
         
 테이블: {self.target_table}
 사용 가능한 컬럼:
@@ -134,6 +141,12 @@ class SimplePostgreSQLAgent:
 예시 질문: "Watson 지역의 Maelstrom 갱단은?"
 예시 답변: region ILIKE '%Watson%' AND gang_name ILIKE '%Maelstrom%'
 """
+        
+        # prepend domain context if provided
+        if self.domain_context:
+            system_prompt = f"{self.domain_context.strip()}\n\n{base_prompt}"
+        else:
+            system_prompt = base_prompt
         
         messages = [
             SystemMessage(content=system_prompt),

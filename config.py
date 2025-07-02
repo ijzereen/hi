@@ -24,6 +24,9 @@ class Config:
     MAX_TOKENS = 4000
     REQUEST_TIMEOUT = 30
     
+    # Domain specific prompt context (optional)
+    DOMAIN_CONTEXT = os.getenv("DOMAIN_CONTEXT", "")
+    
     # PostgreSQL Docker 설정 (환경변수 필수)
     POSTGRES_HOST = os.getenv("POSTGRES_HOST")
     POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432")) if os.getenv("POSTGRES_PORT") else None
