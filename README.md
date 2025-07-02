@@ -152,6 +152,220 @@ project/
 └── README.md           # 이 파일
 ```
 
+## 🔨 다른 환경에서 구현하기
+
+다른 컴퓨터에서 이 프로젝트를 구현할 때는 **최소 기능부터 단계별로** 구현하는 것을 권장합니다.
+
+### 1단계: 기본 연결 테스트 (5분)
+
+먼저 `config.py`를 만들어 데이터베이스 연결을 확인하세요:
+
+```python
+# config.py
+class Config:
+    POSTGRES_HOST = "localhost"
+    POSTGRES_PORT = 5432
+    POSTGRES_USER = "postgres" 
+    POSTGRES_PASSWORD = "postgres"
+    POSTGRES_DB = "postgres"
+    
+    @classmethod
+    def get_postgres_uri(cls) -> str:
+        return f"postgresql://{cls.POSTGRES_USER}:{cls.POSTGRES_PASSWORD}@{cls.POSTGRES_HOST}:{cls.POSTGRES_PORT}/{cls.POSTGRES_DB}"
+```
+
+**연결 테스트:**
+```python
+# test_connection.py
+from sqlalchemy import create_engine, text
+from config import Config
+
+try:
+    engine = create_engine(Config.get_postgres_uri())
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT version()"))
+        print("✅ PostgreSQL 연결 성공!")
+        print(f"버전: {result.fetchone()[0]}")
+except Exception as e:
+    print(f"❌ 연결 실패: {e}")
+```
+
+### 2단계: 수동 SQL 실행 (10분)
+
+AI 없이 수동으로 SQL을 실행하는 간단한 에이전트부터 만드세요:
+
+```python
+# simple_agent.py
+from langchain_community.utilities import SQLDatabase
+from config import Config
+
+class SimpleAgent:
+    def __init__(self):
+        self.db = SQLDatabase.from_uri(Config.get_postgres_uri())
+    
+    def execute_sql(self, sql: str) -> str:
+        """SQL 직접 실행"""
+        try:
+            result = self.db.run(sql)
+            return result
+        except Exception as e:
+            return f"오류: {e}"
+    
+    def list_tables(self) -> str:
+        """테이블 목록 조회"""
+        return self.execute_sql("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+
+# 테스트
+if __name__ == "__main__":
+    agent = SimpleAgent()
+    print("=== 테이블 목록 ===")
+    print(agent.list_tables())
+```
+
+### 3단계: 기본 CLI (5분)
+
+```python
+# minimal_main.py
+from simple_agent import SimpleAgent
+
+def main():
+    agent = SimpleAgent()
+    
+    print("🔍 최소 SQL Agent 테스트")
+    print("명령어: 'tables' (테이블 목록), 'quit' (종료)")
+    print("-" * 40)
+    
+    while True:
+        user_input = input("\n📝 SQL 또는 명령어: ").strip()
+        
+        if user_input.lower() in ['quit', 'exit']:
+            print("👋 종료")
+            break
+        elif user_input.lower() == 'tables':
+            print(agent.list_tables())
+        elif user_input:
+            print(f"결과:\n{agent.execute_sql(user_input)}")
+
+if __name__ == "__main__":
+    main()
+```
+
+### 4단계: 기본 스키마 구조 (10분)
+
+```python
+# basic_schema.py 
+from dataclasses import dataclass
+from typing import Dict
+
+@dataclass
+class ColumnSchema:
+    name: str
+    type: str
+    description: str = ""
+
+@dataclass 
+class TableSchema:
+    name: str
+    columns: Dict[str, ColumnSchema]
+    description: str = ""
+
+class DatabaseSchema:
+    def __init__(self):
+        self.tables: Dict[str, TableSchema] = {}
+    
+    def add_table(self, table: TableSchema):
+        self.tables[table.name] = table
+    
+    def generate_schema_text(self) -> str:
+        parts = []
+        for table_name, table in self.tables.items():
+            parts.append(f"테이블: {table_name}")
+            for col_name, col in table.columns.items():
+                parts.append(f"  - {col_name}: {col.type} ({col.description})")
+        return "\n".join(parts)
+
+# 실제 DB 테이블로 수정 필요!
+def get_test_schema() -> DatabaseSchema:
+    schema = DatabaseSchema()
+    schema.add_table(TableSchema(
+        name="your_actual_table_name",  # ← 실제 테이블명으로 변경
+        columns={
+            "id": ColumnSchema("id", "integer", "기본키"),
+            "name": ColumnSchema("name", "varchar", "이름")
+        }
+    ))
+    return schema
+```
+
+### 5단계: AI 기능 추가
+
+환경변수 설정:
+```bash
+export FIREWORKS_API_KEY="your-api-key"
+```
+
+```python
+# ai_agent.py
+from langchain_openai import ChatOpenAI
+from langchain.schema import SystemMessage, HumanMessage
+from simple_agent import SimpleAgent
+from basic_schema import get_test_schema
+
+class AIAgent(SimpleAgent):
+    def __init__(self):
+        super().__init__()
+        self.llm = ChatOpenAI(
+            model="accounts/ijzereen/deployedModels/qwen3-4b-l3nkg",
+            api_key=Config.FIREWORKS_API_KEY,
+            base_url="https://api.fireworks.ai/inference/v1",
+            temperature=0.1
+        )
+        self.schema = get_test_schema()
+    
+    def ask(self, question: str) -> dict:
+        """자연어 질문 → SQL → 실행"""
+        try:
+            sql = self._generate_sql(question)
+            result = self.execute_sql(sql)
+            return {"sql": sql, "result": result, "success": True}
+        except Exception as e:
+            return {"error": str(e), "success": False}
+    
+    def _generate_sql(self, question: str) -> str:
+        schema_text = self.schema.generate_schema_text()
+        
+        prompt = f"""PostgreSQL 전문가입니다. 다음 스키마로 SQL을 생성하세요:
+
+{schema_text}
+
+규칙:
+1. PostgreSQL 문법 사용
+2. 결과 10개 제한 (LIMIT 10)
+3. SQL만 반환 (설명 없이)
+
+질문: {question}"""
+
+        messages = [SystemMessage(content=prompt)]
+        response = self.llm.invoke(messages)
+        
+        sql = response.content.strip()
+        if sql.startswith("```"):
+            sql = sql.split('\n', 1)[1]
+        if sql.endswith("```"):
+            sql = sql.rsplit('\n', 1)[0]
+            
+        return sql.strip()
+```
+
+### 구현 순서 요약
+
+1. **환경 준비**: `pip install sqlalchemy psycopg2-binary langchain-openai langchain-community`
+2. **파일 순서**: `config.py` → `test_connection.py` → `simple_agent.py` → `minimal_main.py` → `basic_schema.py` → `ai_agent.py`
+3. **단계별 테스트**: 각 단계마다 실행해서 동작 확인
+4. **핵심 확인**: PostgreSQL 연결 → 수동 SQL 실행 → 자연어 SQL 변환
+
+이렇게 하면 **30분 안에** 핵심 기능이 동작합니다. 그 다음 필요하면 자동 스키마 검색 등 고급 기능을 추가하세요.
+
 ## 🎉 주요 기능
 
 - ✅ PostgreSQL Docker 컨테이너 전용 설계
