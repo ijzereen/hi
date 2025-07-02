@@ -13,30 +13,50 @@ load_dotenv()
 class Config:
     """PostgreSQL Docker 컨테이너 전용 설정 관리 클래스"""
     
-    # AI 모델 설정
-    FIREWORKS_API_KEY = os.getenv("FIREWORKS_API_KEY")
-    FIREWORKS_BASE_URL = "https://api.fireworks.ai/inference/v1"
-    DEFAULT_MODEL = "accounts/ijzereen/deployedModels/qwen3-4b-l3nkg"
-    TEMPERATURE = 0.1
+    # AI 모델 설정 - Ollama
+    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:4b")
+    OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "ollama")  # 로컬에서는 임의값
+    TEMPERATURE = 0
     
     # 쿼리 제한
     MAX_RESULTS = 10
     MAX_TOKENS = 4000
     REQUEST_TIMEOUT = 30
     
-    # PostgreSQL Docker 설정
-    POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
-    POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
-    POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
-    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
-    POSTGRES_DB = os.getenv("POSTGRES_DB", "postgres")
+    # PostgreSQL Docker 설정 (환경변수 필수)
+    POSTGRES_HOST = os.getenv("POSTGRES_HOST")
+    POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432")) if os.getenv("POSTGRES_PORT") else None
+    POSTGRES_USER = os.getenv("POSTGRES_USER")
+    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD") 
+    POSTGRES_DB = os.getenv("POSTGRES_DB")
+    
+    # 고정 테이블 및 컬럼 설정
+    TARGET_TABLE = os.getenv("TARGET_TABLE", "gangs")  # 기본값: gangs
+    TARGET_COLUMN = os.getenv("TARGET_COLUMN", "id")    # 기본값: id
     
     @classmethod
     def validate_environment(cls) -> None:
         """환경변수 유효성 검사"""
-        # PostgreSQL 필수 설정들은 기본값이 있으므로 항상 통과
-        # AI API 키는 자연어 쿼리 사용시에만 필요
-        pass
+        missing_vars = []
+        
+        # PostgreSQL 필수 환경변수 검사
+        if not cls.POSTGRES_HOST:
+            missing_vars.append("POSTGRES_HOST")
+        if not cls.POSTGRES_PORT:
+            missing_vars.append("POSTGRES_PORT") 
+        if not cls.POSTGRES_USER:
+            missing_vars.append("POSTGRES_USER")
+        if not cls.POSTGRES_PASSWORD:
+            missing_vars.append("POSTGRES_PASSWORD")
+        if not cls.POSTGRES_DB:
+            missing_vars.append("POSTGRES_DB")
+            
+        if missing_vars:
+            raise ValueError(f"다음 환경변수가 설정되지 않았습니다: {', '.join(missing_vars)}")
+        
+        # Ollama 연결 확인은 실제 사용시에 수행
+        # 로컬 Ollama 서버가 실행 중이어야 자연어 쿼리 기능을 사용할 수 있습니다.
     
     @classmethod
     def get_postgres_uri(cls) -> str:

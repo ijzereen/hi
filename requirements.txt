@@ -5,8 +5,8 @@ langchain-community==0.3.8
 langgraph==0.2.39
 
 # Database - PostgreSQL only
-psycopg2-binary==2.9.9
-sqlalchemy==2.0.35
+psycopg2-binary>=2.9.10
+sqlalchemy>=2.0.35
 
 # Environment utilities
 python-dotenv==1.0.1 

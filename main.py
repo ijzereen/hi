@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-PostgreSQL SQL Agent
-PostgreSQL Docker 컨테이너의 스키마를 동적으로 검색하여 자연어 쿼리를 SQL로 변환하는 시스템
+Simple PostgreSQL SQL Agent
+고정 테이블에서 한 컬럼만 SELECT하고 WHERE절만 자연어로 생성하는 간소화된 시스템
 """
 
 import argparse
 import logging
 import sys
 
-from config import Config
-from sql_agent import create_sql_agent
-from schema_inspector import auto_detect_schema, export_current_schema
+from simple_agent import create_simple_agent
 
+# 모듈 로거
+logger = logging.getLogger(__name__)
 
 def setup_logging(verbose: bool = False):
     """로깅 설정"""
@@ -22,118 +22,95 @@ def setup_logging(verbose: bool = False):
     )
 
 
-def show_info():
-    """데이터베이스 정보 출력"""
+def run_query(natural_query: str):
+    """단일 쿼리 실행"""
     try:
-        agent = create_sql_agent(auto_detect=False)
-        info = Config.get_connection_info()
+        agent = create_simple_agent()
         
-        print(f"\n=== PostgreSQL 데이터베이스 정보 ===")
-        print(f"호스트: {info['host']}:{info['port']}")
-        print(f"데이터베이스: {info['database']}")
-        print(f"연결: ✅ 성공, 테이블 수: {len(agent.list_tables())}")
+        logger.info(f"🔍 질문 분석 중: {natural_query}")
         
+        result = agent.ask(natural_query)
+        
+        if result['success']:
+            logger.info(f"📝 생성된 SQL: {result['sql']}")
+            vals = result.get('result', [])
+            col = result.get('target_column', 'value')
+            if vals:
+                logger.info(f"✅ 발견된 {col.upper()} 값: {', '.join(map(str, vals))}")
+            else:
+                logger.info("✅ 조건에 맞는 데이터를 찾지 못했습니다.")
+        else:
+            logger.error(f"❌ 오류: {result.get('error', '알 수 없는 오류')}")
+            
     except Exception as e:
-        print(f"연결: ❌ 실패 - {e}")
-
-
-def scan_schema():
-    """스키마 검색 및 출력"""
-    try:
-        print("PostgreSQL 스키마 검색 중...")
-        schema = auto_detect_schema()
-        
-        print(f"\n=== 검색된 스키마 ({len(schema.tables)}개 테이블) ===")
-        for table_name, table in schema.tables.items():
-            print(f"📋 {table_name}: {len(table.columns)}개 컬럼")
-            if hasattr(table, 'sample_data') and table.sample_data:
-                print(f"   샘플 데이터: {len(table.sample_data)}건")
-                
-    except Exception as e:
-        print(f"스키마 검색 실패: {e}")
+        logger.error(f"❌ 오류: {e}")
 
 
 def run_interactive():
     """대화형 모드"""
-    print("🔍 PostgreSQL SQL Agent - 대화형 모드")
-    print("명령어: 'quit' (종료), 'schema' (스키마), 'tables' (테이블 목록)")
-    print("-" * 50)
+    logger.info("🎯 Simple SQL Agent - 대화형 모드")
+    logger.info("사용법: 자연어 질문 (예: '가장 외곽에 있는 조직이 어디야?')")
+    logger.info("명령어: 'quit' (종료)")
+    logger.info("-" * 60)
     
     try:
-        agent = create_sql_agent()
-        print(f"✅ 연결 성공! {len(agent.list_tables())}개 테이블")
+        agent = create_simple_agent()
+        logger.info(f"✅ 연결 성공! 테이블: {agent.target_table}")
+        logger.info(f"사용 가능한 컬럼: {', '.join(agent.list_columns())}")
     except Exception as e:
-        print(f"❌ 초기화 실패: {e}")
+        logger.error(f"❌ 초기화 실패: {e}")
         return
     
     while True:
         try:
-            question = input("\n🤔 질문: ").strip()
+            user_input = input("\n🤔 질문: ").strip()
             
-            if not question:
+            if not user_input:
                 continue
                 
-            if question.lower() in ['quit', 'exit', 'q']:
-                print("👋 종료합니다.")
+            if user_input.lower() in ['quit', 'exit', 'q']:
+                logger.info("👋 종료합니다.")
                 break
-            elif question.lower() in ['schema']:
-                print(agent.schema_text)
-                continue
-            elif question.lower() in ['tables']:
-                tables = agent.list_tables()
-                print(f"📋 테이블 목록: {', '.join(tables)}")
-                continue
             
             # 자연어 쿼리 처리
-            print("🔍 처리 중...")
-            result = agent.ask(question)
+            logger.info(f"🔍 질문 분석 중...")
+            result = agent.ask(user_input)
             
             if result['success']:
-                print(f"\n📝 SQL: {result['sql']}")
-                print(f"📊 결과:\n{result['result']}")
+                logger.info(f"📝 생성된 SQL: {result['sql']}")
+                vals = result.get('result', [])
+                col = result.get('target_column', 'value')
+                if vals:
+                    logger.info(f"✅ 발견된 {col.upper()} 값: {', '.join(map(str, vals))}")
+                else:
+                    logger.info("✅ 조건에 맞는 데이터를 찾지 못했습니다.")
             else:
-                print(f"❌ 오류: {result['result']}")
+                logger.error(f"❌ 오류: {result.get('error', '알 수 없는 오류')}")
                 
         except KeyboardInterrupt:
-            print("\n👋 종료합니다.")
+            logger.info("\n👋 종료합니다.")
             break
         except Exception as e:
-            print(f"❌ 오류: {e}")
+            logger.error(f"❌ 오류: {e}")
 
 
 def main():
     """메인 함수"""
-    parser = argparse.ArgumentParser(description="PostgreSQL SQL Agent")
-    parser.add_argument("--query", "-q", help="자연어 질문")
-    parser.add_argument("--info", action="store_true", help="DB 정보 확인")
-    parser.add_argument("--scan", action="store_true", help="스키마 검색")
-    parser.add_argument("--export", help="스키마 내보내기 (파일명)")
+    parser = argparse.ArgumentParser(description="Simple PostgreSQL SQL Agent")
+    parser.add_argument("--query", "-q", help="자연어 질문 (예: '가장 외곽에 있는 조직이 어디야?')")
     parser.add_argument("--verbose", "-v", action="store_true", help="상세 로그")
     
     args = parser.parse_args()
     setup_logging(args.verbose)
     
     try:
-        if args.info:
-            show_info()
-        elif args.scan:
-            scan_schema()
-        elif args.export:
-            schema = export_current_schema(args.export)
-            print(f"✅ 스키마를 {args.export}에 저장했습니다.")
-        elif args.query:
-            agent = create_sql_agent()
-            result = agent.ask(args.query)
-            if result['success']:
-                print(f"SQL: {result['sql']}")
-                print(f"결과:\n{result['result']}")
-            else:
-                print(f"오류: {result['result']}")
+        if args.query:
+            run_query(args.query)
         else:
             run_interactive()
             
     except Exception as e:
-        print(f"❌ 오류: {e}")
+        logger.error(f"❌ 오류: {e}")
         sys.exit(1)
 
 

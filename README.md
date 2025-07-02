@@ -1,13 +1,13 @@
-# PostgreSQL SQL Agent
+# Simple PostgreSQL SQL Agent
 
-PostgreSQL Docker 컨테이너의 스키마를 **동적으로 검색**하여 자연어 쿼리를 SQL로 변환하는 시스템입니다.
+**고정 테이블에서 한 컬럼만 SELECT하고 WHERE절만 자연어로 생성**하는 간소화된 SQL Agent입니다.
 
-## 🎯 핵심 기능
+## 🎯 핵심 기능 (간소화됨)
 
-- **동적 스키마 검색**: PostgreSQL 컨테이너에 연결하여 실시간으로 테이블 구조 분석
-- **자연어 SQL 변환**: AI를 활용한 자연어 쿼리 → SQL 자동 변환
-- **자연어 컬럼 설명**: 각 컬럼의 특성과 비즈니스 의미를 자연어로 설명
-- **샘플 데이터 수집**: 각 테이블의 샘플 데이터 자동 수집 및 컨텍스트 제공
+- **고정 테이블**: 하나의 테이블만 지정하여 작업 단순화
+- **단일 컬럼 SELECT**: 사용자가 선택한 컬럼 하나만 조회
+- **WHERE절 자연어 변환**: AI로 자연어 조건을 WHERE절로 변환
+- **즉시 실행**: 복잡한 스키마 분석 없이 바로 쿼리 실행
 
 ## 🚀 빠른 시작
 
@@ -21,65 +21,88 @@ source venv/bin/activate
 docker-compose up -d
 ```
 
-### 2. 환경변수 설정 (선택사항)
+### 2. 환경변수 설정 (필수)
 
 `.env` 파일 생성:
 ```bash
-# PostgreSQL 설정 (기본값 사용 가능)
+# PostgreSQL 설정 (모든 값 필수)
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=postgres
+POSTGRES_USER=your_username
+POSTGRES_PASSWORD=your_password
+POSTGRES_DB=your_database
 
-# AI 모델 설정 (자연어 쿼리용)
-FIREWORKS_API_KEY=your-api-key-here
+# 고정 테이블 설정 (기본값: organizations)
+TARGET_TABLE=organizations
+
+# AI 모델 설정 - Ollama (자연어 쿼리용)
+OLLAMA_BASE_URL=http://localhost:11434/v1
+OLLAMA_MODEL=qwen3:4b
+OLLAMA_API_KEY=ollama
 ```
+
+**주의**: 모든 PostgreSQL 환경변수가 필수이며, TARGET_TABLE로 작업할 테이블을 지정할 수 있습니다.
+
+### 3. Ollama 설치 및 실행 (자연어 쿼리용)
+
+자연어 조건을 WHERE절로 변환하려면 Ollama가 필요합니다:
+
+```bash
+# Ollama 설치 (macOS)
+brew install ollama
+
+# Ollama 서버 시작
+ollama serve
+
+# qwen3:4b 모델 다운로드 (새 터미널에서)
+ollama pull qwen3:4b
+```
+
+**참고**: Ollama 없이도 직접 SQL WHERE 조건을 입력하여 사용할 수 있습니다.
 
 ## 📖 사용법
 
 ### 기본 명령어
 
 ```bash
-# 데이터베이스 연결 정보 확인
+# 데이터베이스 및 테이블 정보 확인
 python main.py --info
 
-# 스키마 자동 검색 및 출력
-python main.py --scan
+# 특정 컬럼 조회 (조건 없음)
+python main.py --column name
 
-# 스키마를 Python 코드로 내보내기
-python main.py --export backup_schema.py
-
-# 일회성 자연어 쿼리
-python main.py --query "organizations 테이블의 모든 데이터를 보여주세요"
+# 자연어 조건으로 컬럼 조회
+python main.py --column name --condition "Downtown 지역"
 
 # 대화형 모드 (기본값)
 python main.py
 ```
 
-### 대화형 모드 명령어
+### 대화형 모드 사용법
 
-- `schema` - 전체 데이터베이스 스키마 출력
-- `tables` - 테이블 목록 출력
+- `컬럼명` - 해당 컬럼의 모든 값 조회
+- `컬럼명 조건` - 자연어 조건으로 필터링하여 조회
+- `info` - 데이터베이스 및 테이블 정보
+- `columns` - 사용 가능한 컬럼 목록
 - `quit` / `exit` / `q` - 종료
 
-### 예시 자연어 쿼리
+### 예시 사용법
 
-```
-🤔 질문: organizations 테이블에 몇 개의 레코드가 있나요?
-🤔 질문: Downtown 지역의 조직을 모두 보여주세요
-🤔 질문: Tech Innovators라는 이름을 가진 조직의 위치를 알려주세요
+```bash
+🤔 입력: name                    # name 컬럼의 모든 값
+🤔 입력: name Downtown 지역       # Downtown 지역의 조직 이름들
+🤔 입력: status 활성            # 활성 상태인 조직들의 status
+🤔 입력: members_count 10명 이상  # 10명 이상인 조직들의 멤버 수
 ```
 
 ## 🔧 시스템 구조
 
-### 핵심 컴포넌트
+### 핵심 컴포넌트 (간소화됨)
 
 1. **main.py** - 메인 실행 파일 및 CLI 인터페이스
-2. **schema_inspector.py** - PostgreSQL 동적 스키마 검색
-3. **sql_agent.py** - AI 기반 자연어 → SQL 변환
-4. **schema.py** - 스키마 정의 (자연어 설명 지원)
-5. **config.py** - 설정 관리
+2. **simple_agent.py** - 간소화된 SQL Agent (WHERE절만 처리)
+3. **config.py** - 설정 관리 (고정 테이블 포함)
+4. **schema.py** - 기본 스키마 정의 (간소화됨)
 
 ## 🆕 자연어 컬럼 설명 기능
 
@@ -102,19 +125,19 @@ ColumnSchema(
 
 이러한 자연어 설명들은 AI 모델에게 더 풍부한 컨텍스트를 제공하여 더 정확한 SQL 쿼리를 생성합니다.
 
-## 📊 현재 데이터베이스 구조
+## 📊 데이터베이스 구조
 
-자동 검색된 `organizations` 테이블:
+이 시스템은 **완전 동적 스키마 검색**을 사용합니다:
 
-| 컬럼명 | 타입 | 설명 | 특성 |
-|--------|------|------|------|
-| id | INTEGER (PK) | 조직 고유 식별자 | 시스템 자동 생성 |
-| name | VARCHAR(100) | 조직 이름 | - |
-| region | VARCHAR(50) | 조직 활동 지역 | - |
-| members_count | INTEGER | 조직 구성원 수 | 조직 평가 기준 |
-| status | VARCHAR(20) | 조직 상태 | active/inactive/disbanded |
-| x_coord | DOUBLE | X 좌표 (경도) | GPS 좌표 |
-| y_coord | DOUBLE | Y 좌표 (위도) | GPS 좌표 |
+- 실행 시점에 PostgreSQL 데이터베이스에 연결하여 모든 테이블과 컬럼 정보를 실시간으로 검색
+- 하드코딩된 스키마 정의 없음 - 모든 스키마 정보는 `schema_inspector.py`를 통해 동적으로 수집
+- 테이블 구조가 변경되어도 별도 수정 없이 자동으로 새 구조를 인식
+
+**스키마 확인 방법:**
+```bash
+# 현재 데이터베이스의 모든 테이블 구조 확인
+python main.py --scan
+```
 
 ## 🚨 트러블슈팅
 
@@ -138,15 +161,14 @@ docker-compose restart
 - **Schema**: sqlalchemy
 - **Utils**: python-dotenv
 
-## 📁 파일 구조
+## 📁 파일 구조 (간소화됨)
 
 ```
 project/
 ├── main.py              # 메인 실행 파일 및 CLI
-├── config.py            # 설정 관리
-├── schema.py            # 스키마 정의 (자연어 설명 지원)
-├── schema_inspector.py  # 동적 스키마 검색
-├── sql_agent.py         # SQL 에이전트
+├── simple_agent.py      # 간소화된 SQL Agent
+├── config.py            # 설정 관리 (고정 테이블 포함)
+├── schema.py            # 기본 스키마 정의
 ├── docker-compose.yml   # PostgreSQL 컨테이너
 ├── requirements.txt     # Python 의존성
 └── README.md           # 이 파일
@@ -158,16 +180,31 @@ project/
 
 ### 1단계: 기본 연결 테스트 (5분)
 
-먼저 `config.py`를 만들어 데이터베이스 연결을 확인하세요:
+먼저 환경변수를 설정하고 데이터베이스 연결을 확인하세요:
 
+1. `.env` 파일 생성:
+```bash
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=your_actual_user
+POSTGRES_PASSWORD=your_actual_password
+POSTGRES_DB=your_actual_database
+```
+
+2. 기본 `config.py` 생성:
 ```python
 # config.py
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 class Config:
-    POSTGRES_HOST = "localhost"
-    POSTGRES_PORT = 5432
-    POSTGRES_USER = "postgres" 
-    POSTGRES_PASSWORD = "postgres"
-    POSTGRES_DB = "postgres"
+    POSTGRES_HOST = os.getenv("POSTGRES_HOST")
+    POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
+    POSTGRES_USER = os.getenv("POSTGRES_USER")
+    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+    POSTGRES_DB = os.getenv("POSTGRES_DB")
     
     @classmethod
     def get_postgres_uri(cls) -> str:

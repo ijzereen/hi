@@ -83,9 +83,12 @@ class PostgreSQLSchemaInspector:
             raise RuntimeError("데이터베이스 연결에 실패했습니다.")
         
         database_schema = DatabaseSchema()
-        table_names = self.get_all_tables()
-        
-        logging.info(f"검색된 테이블 수: {len(table_names)}")
+        # 단일 테이블만 대상 (Config.TARGET_TABLE)
+        target_table = Config.TARGET_TABLE
+        if not target_table:
+            raise RuntimeError("Config.TARGET_TABLE 값이 설정되어 있지 않습니다.")
+        table_names = [target_table]
+        logging.info(f"대상 테이블: {target_table}")
         
         for table_name in table_names:
             try:
