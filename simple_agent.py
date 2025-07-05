@@ -76,6 +76,21 @@ class SimplePostgreSQLAgent:
             logger.error(f"샘플 데이터 조회 실패: {e}")
             return []
 
+    def get_all_distinct_values(self, column: str) -> List[Any]:
+        """지정된 컬럼의 모든 고유값을 가져오기"""
+        if column not in self.columns:
+            logger.warning(f"컬럼 '{column}'은 테이블에 존재하지 않습니다.")
+            return []
+        try:
+            with self.engine.connect() as conn:
+                result = conn.execute(text(f'SELECT DISTINCT "{column}" FROM {self.target_table} ORDER BY 1'))
+                values = [row[0] for row in result.fetchall()]
+                logger.debug(f"컬럼 '{column}'에서 {len(values)}개의 고유값을 가져왔습니다.")
+                return values
+        except Exception as e:
+            logger.error(f"컬럼 '{column}'의 고유값 조회 실패: {e}")
+            return []
+
     def execute_fixed_query(self, where_condition: str = "") -> Dict[str, Any]:
         """고정 컬럼에 대한 쿼리를 실행하고 값 목록을 반환"""
         if self.target_column not in self.columns:
@@ -117,32 +132,61 @@ class SimplePostgreSQLAgent:
         """자연어 질문을 분석해서 WHERE 조건을 추출"""
         if not self.llm:
             raise RuntimeError("Ollama AI 모델이 초기화되지 않았습니다. Ollama 서버가 실행 중인지 확인하세요.")
+
+        # --- ▼▼▼ 수정된 섹션 시작 ▼▼▼ ---
+
+        # 1. 전체 값 컨텍스트를 제공할 컬럼 정의
+        # (config.py에서 관리하는 것이 좋습니다)
+        context_columns_to_show = ["region", "gang_name", "status"]
         
-        column_info = []
+        # 2. 지정된 컨텍스트 컬럼들에 대해 모든 고유값 가져오기
+        context_values_info = []
+        for col_name in context_columns_to_show:
+            if col_name in self.columns:
+                distinct_values = self.get_all_distinct_values(col_name)
+                if distinct_values:
+                    # 값들을 쉼표로 구분된 문자열로 포맷팅
+                    values_str = ", ".join([f"'{v}'" if isinstance(v, str) else str(v) for v in distinct_values])
+                    # 어떤 컬럼의 값인지 명확히 보여주는 라벨 생성
+                    context_values_info.append(f"- **'{col_name}'** 컬럼의 사용 가능한 값들: [{values_str}]")
+
+        # 3. 모든 사용 가능한 컬럼에 대한 샘플 데이터 가져오기
+        column_sample_info = []
         for col in self.columns:
             samples = self.get_sample_data(col, 3)
-            sample_str = ", ".join([f"'{s}'" if isinstance(s, str) else str(s) for s in samples[:3]])
-            column_info.append(f"- {col}: 예시값 [{sample_str}]")
+            sample_str = ", ".join([f"'{s}'" if isinstance(s, str) else str(s) for s in samples])
+            column_sample_info.append(f"- {col} (예시: {sample_str})")
+
+        # 4. 최종 base_prompt를 영어로 구성
+        base_prompt = f"""You are an expert at converting natural language questions into PostgreSQL WHERE clauses.
         
-        base_prompt = f"""당신은 자연어 질문을 PostgreSQL WHERE 절로 변환하는 전문가입니다.
-        
-테이블: {self.target_table}
-사용 가능한 컬럼:
-{chr(10).join(column_info)}
+Table: {self.target_table}
 
-사용자의 질문을 기반으로 'SELECT {self.target_column} FROM {self.target_table}' 쿼리에 사용할 WHERE 절만 생성해주세요.
-- WHERE 키워드는 포함하지 마세요.
-- 문자열 비교는 ILIKE를 사용하세요 (대소문자 무시).
-- 조건이 필요 없으면 아무것도 출력하지 마세요.
+---
+### Context: Here are the actual values contained in some of the columns.
+{chr(10).join(context_values_info)}
+---
+### All Available Columns
+{chr(10).join(column_sample_info)}
+---
 
-예시 질문: "가장 외곽에 있는 조직이 어디야?"
-예시 답변: x_coord = (SELECT MIN(x_coord) FROM {self.target_table}) OR x_coord = (SELECT MAX(x_coord) FROM {self.target_table})
+### Instructions
+1.  Based on the user's question, generate **only the WHERE clause** for a `SELECT {self.target_column} FROM {self.target_table}` query.
+2.  **Do not include the `WHERE` keyword** in your response.
+3.  Use `ILIKE` for case-insensitive string comparisons.
+4.  If no conditions are needed, return an empty string.
 
-예시 질문: "Watson 지역의 Maelstrom 갱단은?"
-예시 답변: region ILIKE '%Watson%' AND gang_name ILIKE '%Maelstrom%'
+### Examples
+-   **Question:** "Which organization is on the outermost edge?"
+-   **Answer:** x_coord = (SELECT MIN(x_coord) FROM {self.target_table}) OR x_coord = (SELECT MAX(x_coord) FROM {self.target_table})
+
+-   **Question:** "Maelstrom gangs in the Watson area?"
+-   **Answer:** region ILIKE '%Watson%' AND gang_name ILIKE '%Maelstrom%'
 """
-        
-        # prepend domain context if provided
+
+        # --- ▲▲▲ 수정된 섹션 끝 ▲▲▲ ---
+
+        # 도메인 특화 컨텍스트가 있으면 추가
         if self.domain_context:
             system_prompt = f"{self.domain_context.strip()}\n\n{base_prompt}"
         else:
@@ -150,30 +194,26 @@ class SimplePostgreSQLAgent:
         
         messages = [
             SystemMessage(content=system_prompt),
-            HumanMessage(content=f"질문: {natural_query}")
+            HumanMessage(content=f"Question: {natural_query}")
         ]
         
         try:
             response = self.llm.invoke(messages)
             condition = response.content.strip()
             
-            # 1) Remove chain-of-thought blocks like <think>...</think>
+            # 후처리 로직 (기존과 동일)
             condition = re.sub(r"<think>[\s\S]*?</think>", "", condition, flags=re.IGNORECASE)
             
-            # 2) Strip markdown or leading keywords
             if condition.lower().startswith("where "):
                 condition = condition[6:]
             if condition.startswith("```"):
-                # remove triple backtick fencing
                 condition = "\n".join(condition.strip("`").split("\n")[1:])
             if condition.endswith("```"):
                 condition = condition.split("\n")[0]
             
-            # 3) Get the last non-empty line (safest assumption of actual SQL)
             lines = [ln.strip() for ln in condition.splitlines() if ln.strip()]
             condition = lines[-1] if lines else ""
             
-            # 4) Remove trailing semicolon if exists
             if condition.endswith(";"):
                 condition = condition[:-1].strip()
             

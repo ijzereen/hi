@@ -24,7 +24,6 @@ def setup_logging(verbose: bool = False):
 def run_interactive():
     """대화형 모드"""
     logger.info("🎯 Simple SQL Agent - 대화형 모드")
-    logger.info("사용법: 자연어 질문 (예: '가장 외곽에 있는 조직이 어디야?')")
     logger.info("명령어: 'quit' (종료)")
     logger.info("-" * 60)
     
